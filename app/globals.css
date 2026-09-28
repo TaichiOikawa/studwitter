@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+html {
+  font-family:
+    "Segoe UI",
+    Meiryo,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+@theme static {
+  --color-ink: #0f1419;
+  --color-ink-dark: #e7e9ea;
+  --color-secondary: #536471;
+  --color-muted: #6b7280;
+  --color-muted-dark: #8b98a5;
+
+  --color-brand: #1d9bf0;
+  --color-brand-strong: #1478b8;
+  --color-brand-soft: #eff9ff;
+  --color-accent-pink: #f91880;
+  --color-danger: #f4212e;
+  --color-danger-soft: #fff0f1;
+  --color-danger-soft-dark: #2a0d10;
+
+  --color-line: #cfd9de;
+  --color-line-strong: #cfd3d7;
+  --color-line-subtle: #eff3f4;
+  --color-line-dark: #26282b;
+  --color-line-strong-dark: #3a3d41;
+
+  --color-surface-dark: #151718;
+  --color-surface-deep: #111214;
+  --color-surface-black: #0c0c0c;
+  --color-surface-muted: #f2f3f4;
+  --color-surface-subtle: #f7f9f9;
+  --color-surface-panel: #f7f8fa;
+  --color-surface-card: #f7f8f9;
+
+  --color-avatar-orange: #ff7a1a;
+  --color-avatar-green: #13aa6b;
+  --color-avatar-violet: #7856ff;
+  --color-avatar-rose: #e0245e;
+  --color-avatar-amber: #ffad1f;
+  --color-avatar-cyan: #0891b2;
+  --color-avatar-fuchsia: #d946ef;
+  --color-avatar-lime: #65a30d;
+  --color-avatar-red: #ef4444;
+  --color-avatar-teal: #0f766e;
+
+  --text-ui: 15px;
+  --text-ui-compact: 14.5px;
+  --text-caption: 13.5px;
+  --text-meta: 12.5px;
+  --text-micro: 11px;
+
+  --radius-card: 18px;
+  --radius-popover: 22px;
+  --radius-control: 14px;
+
+  --container-content: 420px;
+  --container-form: 430px;
+  --container-panel: 600px;
+  --container-page: 1440px;
+
+  --shadow-auth-control: 0 1px 2px rgb(15 20 25 / 4%);
+  --shadow-popover: 0 10px 34px rgb(0 0 0 / 35%);
+  --shadow-card-menu: 0 6px 20px rgb(0 0 0 / 18%);
+
+  --tracking-body: 0.1px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }

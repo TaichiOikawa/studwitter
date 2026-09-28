@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Studwitter
 
-## Getting Started
+Googleアカウントで利用できる学習カードアプリです。Next.js 16（vinext）、Cloudflare Workers / D1、Prisma 7、Better Authを使用しています。
 
-First, run the development server:
+## ローカル開発
+
+依存関係をインストールし、環境変数を用意します。
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+yarn install
+cp .env.example .dev.vars
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.dev.vars` に次の値を設定してください。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `BETTER_AUTH_SECRET`: 32文字以上のランダム文字列
+- `BETTER_AUTH_URL`: ローカルでは `http://localhost:3000`
+- `GOOGLE_CLIENT_ID`: Google OAuthクライアントID
+- `GOOGLE_CLIENT_SECRET`: Google OAuthクライアントシークレット
+- `ADMIN_EMAIL`: 管理ページへアクセスできるGoogleアカウントのメールアドレス
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Google Cloud Consoleの承認済みリダイレクトURIには、ローカル用として次を追加します。
 
-## Learn More
+```text
+http://localhost:3000/api/auth/callback/google
+```
 
-To learn more about Next.js, take a look at the following resources:
+DBを準備して開発サーバーを起動します。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+yarn db:migrate:local
+yarn dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+管理者でログインすると、`/admin` の管理ページへアクセスできます。
 
-## Deploy on Vercel
+## Cloudflareへの反映
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+本番URLの `/api/auth/callback/google` もGoogle Cloud Consoleの承認済みリダイレクトURIに追加してください。各環境変数はソースへ書かず、Cloudflare secretとして設定します。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+yarn wrangler secret put BETTER_AUTH_SECRET
+yarn wrangler secret put BETTER_AUTH_URL
+yarn wrangler secret put GOOGLE_CLIENT_ID
+yarn wrangler secret put GOOGLE_CLIENT_SECRET
+yarn wrangler secret put ADMIN_EMAIL
+yarn db:migrate:remote
+yarn deploy
+```
+
+`BETTER_AUTH_URL` には、末尾のスラッシュなしで本番オリジンを設定します。
