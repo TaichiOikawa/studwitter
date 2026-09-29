@@ -11,7 +11,7 @@ export type StudyCardData = {
 };
 
 export type CardChanges = Partial<
-  Pick<StudyCardData, "likes" | "note" | "image">
+  Pick<StudyCardData, "text" | "likes" | "note" | "image">
 >;
 
 export const IMAGE_LIMIT = 800 * 1024;
@@ -85,62 +85,30 @@ export async function saveCards(cards: StudyCardData[]) {
   }
 }
 
-export function splitIntoCards(raw: string) {
+function normalizePostText(raw: string) {
   const text = raw.trim().replace(/[ \t]+/g, " ");
-  if (!text) return [];
-
-  let sentences = text
-    .split(/(?<=[。！？!?])|\n+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  if (!sentences.length) sentences = [text];
-  const chunks: string[] = [];
-
-  for (const sentence of sentences) {
-    if (sentence.length <= 80) {
-      chunks.push(sentence);
-      continue;
-    }
-
-    const parts = sentence.split("、");
-    let buffer = "";
-    parts.forEach((part, index) => {
-      const next = part + (index < parts.length - 1 ? "、" : "");
-      if (buffer && (buffer + next).length > 80) {
-        chunks.push(buffer);
-        buffer = next;
-      } else {
-        buffer += next;
-      }
-    });
-    if (buffer) chunks.push(buffer);
-  }
-
-  return chunks.flatMap((chunk) => {
-    if (chunk.length <= 100) return [chunk];
-    const parts: string[] = [];
-    for (let index = 0; index < chunk.length; index += 80) {
-      parts.push(chunk.slice(index, index + 80));
-    }
-    return parts;
-  });
+  return text;
 }
 
 export function createPostCards(
   raw: string,
   image: string | null,
 ): StudyCardData[] {
+  const text = normalizePostText(raw);
+  if (!text) return [];
+
   const now = Date.now();
-  return splitIntoCards(raw).map((text, index) => ({
-    id: `${now}${Math.random().toString(36).slice(2, 7)}${index}`,
-    text,
-    likes: 0,
-    createdAt: now,
-    note: "",
-    image: index === 0 ? image : null,
-    auto: false,
-  }));
+  return [
+    {
+      id: `${now}${Math.random().toString(36).slice(2, 7)}`,
+      text,
+      likes: 0,
+      createdAt: now,
+      note: "",
+      image,
+      auto: false,
+    },
+  ];
 }
 
 export function createSampleCards(subjects: string[]): StudyCardData[] {

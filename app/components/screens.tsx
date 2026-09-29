@@ -239,9 +239,6 @@ export function ComposeScreen({
         />
       </div>
 
-      <div className="mx-auto max-w-panel px-4.5 pb-4.5 text-meta text-muted dark:text-muted-dark">
-        長文は自動で読みやすい単位に分割してカード化されます(画像は最初の1枚目のカードに添付されます)。
-      </div>
     </section>
   );
 }
@@ -307,7 +304,7 @@ export function HelpScreen({ onClose }: { onClose: () => void }) {
         <p>
           <b>追加</b>
           <br />
-          知識を入力して投稿できます。長文は自動で読みやすい単位に分割されます。画像も添付できます。
+          知識を入力して投稿できます。画像も添付できます。
         </p>
         <p>
           <b>いいね / 減らす</b>

@@ -4,6 +4,7 @@ import { authClient } from "@/app/lib/auth-client";
 import {
   AtSignIcon,
   LogOutIcon,
+  MoonIcon,
   SaveIcon,
   UserRoundIcon,
   XIcon,
@@ -46,7 +47,9 @@ export function AccountMenu({
   const [name, setName] = useState(profile.name);
   const [username, setUsername] = useState(profile.username);
   const [pending, setPending] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const [error, setError] = useState("");
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -62,6 +65,7 @@ export function AccountMenu({
     setName(profile.name);
     setUsername(profile.username);
     setError("");
+    setIsDark(document.documentElement.classList.contains("dark"));
     setOpen(true);
   };
 
@@ -100,16 +104,24 @@ export function AccountMenu({
   };
 
   const signOut = async () => {
-    setPending(true);
+    setLogoutPending(true);
     setError("");
     const result = await authClient.signOut();
     if (result.error) {
       setError("ログアウトできませんでした。もう一度お試しください。");
-      setPending(false);
+      setLogoutPending(false);
       return;
     }
     router.replace("/login");
     router.refresh();
+  };
+
+  const toggleDarkMode = () => {
+    const nextIsDark = !isDark;
+    document.documentElement.classList.toggle("dark", nextIsDark);
+    document.documentElement.style.colorScheme = nextIsDark ? "dark" : "light";
+    localStorage.setItem("studwitter-theme", nextIsDark ? "dark" : "light");
+    setIsDark(nextIsDark);
   };
 
   return (
@@ -117,8 +129,8 @@ export function AccountMenu({
       <button
         type="button"
         className="flex cursor-pointer rounded-full border-0 bg-transparent p-1.5 text-muted active:bg-surface-muted dark:text-muted-dark dark:active:bg-surface-dark"
-        title="アカウント管理"
-        aria-label="アカウント管理"
+        title="設定"
+        aria-label="設定"
         onClick={openDialog}
       >
         <UserRoundIcon size={20} />
@@ -138,12 +150,12 @@ export function AccountMenu({
               role="dialog"
               aria-modal="true"
               aria-labelledby="account-dialog-title"
-              className="w-full max-w-content rounded-2xl border border-ink-dark bg-white p-5 text-ink shadow-2xl dark:border-line-dark dark:bg-black dark:text-ink-dark"
+              className="max-h-[calc(100dvh-2rem)] w-full max-w-content overflow-y-auto rounded-2xl border border-ink-dark bg-white p-5 text-ink shadow-2xl dark:border-line-dark dark:bg-black dark:text-ink-dark"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 id="account-dialog-title" className="text-lg font-bold">
-                    アカウント管理
+                    設定
                   </h2>
                   <p className="mt-1 max-w-72.5 truncate text-xs text-muted dark:text-muted-dark">
                     {email}
@@ -210,6 +222,29 @@ export function AccountMenu({
               </form>
 
               <div className="mt-5 border-t border-ink-dark pt-4 dark:border-line-dark">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDark}
+                  className="flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left hover:bg-surface-muted dark:hover:bg-surface-dark"
+                  onClick={toggleDarkMode}
+                >
+                  <MoonIcon size={18} />
+                  <span className="flex-1 text-sm font-semibold">
+                    ダークモード
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={`relative h-6 w-11 rounded-full transition-colors ${isDark ? "bg-ink-dark" : "bg-line-strong"}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 size-5 rounded-full shadow-sm transition-transform ${isDark ? "translate-x-5 bg-black" : "translate-x-0.5 bg-white"}`}
+                    />
+                  </span>
+                </button>
+              </div>
+
+              <div className="mt-4 border-t border-ink-dark pt-4 dark:border-line-dark">
                 {isAdmin && (
                   <Link
                     href="/admin"
@@ -220,7 +255,7 @@ export function AccountMenu({
                 )}
                 <button
                   type="button"
-                  disabled={pending}
+                  disabled={logoutPending}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left text-sm font-semibold text-danger hover:bg-danger-soft disabled:opacity-50 dark:hover:bg-danger-soft-dark"
                   onClick={signOut}
                 >

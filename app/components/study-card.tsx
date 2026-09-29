@@ -38,6 +38,8 @@ export function StudyCard({
   onNotice,
 }: StudyCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDraft, setEditDraft] = useState(card.text);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(card.note);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -57,6 +59,23 @@ export function StudyCard({
   const toggleNote = () => {
     setNoteDraft(card.note);
     setNoteOpen((current) => !current);
+  };
+
+  const openEdit = () => {
+    setMenuOpen(false);
+    setEditDraft(card.text);
+    setEditOpen(true);
+  };
+
+  const saveEdit = () => {
+    const text = editDraft.trim();
+    if (!text) {
+      onNotice("投稿内容を入力してください");
+      return;
+    }
+
+    onChange(card.id, { text });
+    setEditOpen(false);
   };
 
   const updateImage = async (file: File) => {
@@ -108,9 +127,35 @@ export function StudyCard({
           </button>
         </div>
 
-        <div className="mt-0.75 text-ui leading-normal whitespace-pre-wrap wrap-break-word">
-          {card.text}
-        </div>
+        {editOpen ? (
+          <div className="mt-2 flex flex-col gap-2">
+            <textarea
+              className="min-h-24 w-full resize-y rounded-[10px] border border-ink-dark bg-white p-2.5 text-ui leading-normal text-ink outline-none placeholder:text-muted focus:ring-2 focus:ring-ink/15 dark:border-line-dark dark:bg-black dark:text-ink-dark dark:placeholder:text-muted-dark dark:focus:ring-ink-dark/20"
+              value={editDraft}
+              onChange={(event) => setEditDraft(event.target.value)}
+              aria-label="投稿内容"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="cursor-pointer rounded-2xl border border-ink-dark bg-transparent px-3.75 py-1.5 text-meta font-bold dark:border-line-dark"
+                onClick={() => setEditOpen(false)}
+              >
+                キャンセル
+              </button>
+              <button
+                className="cursor-pointer rounded-2xl border-0 bg-ink px-3.75 py-1.5 text-meta font-bold text-white dark:bg-ink-dark dark:text-black"
+                onClick={saveEdit}
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-0.75 text-ui leading-normal whitespace-pre-wrap wrap-break-word">
+            {card.text}
+          </div>
+        )}
 
         {card.image && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -193,6 +238,12 @@ export function StudyCard({
             className="absolute top-10 right-4.5 z-5 min-w-40 overflow-hidden rounded-xl border border-ink-dark bg-white shadow-card-menu dark:border-line-dark dark:bg-black"
             onClick={(event) => event.stopPropagation()}
           >
+            <button
+              className="block w-full cursor-pointer border-0 border-b border-ink-dark bg-transparent px-4 py-2.75 text-left text-sm dark:border-line-dark"
+              onClick={openEdit}
+            >
+              投稿を編集
+            </button>
             <button
               className="block w-full cursor-pointer border-0 border-b border-ink-dark bg-transparent px-4 py-2.75 text-left text-sm dark:border-line-dark"
               onClick={() => imageInput.current?.click()}
