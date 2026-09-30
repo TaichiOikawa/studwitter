@@ -1,6 +1,8 @@
 import { auth } from "@/app/lib/auth";
 import { getPrisma } from "@/app/lib/prisma";
 
+type TextRange = { start: number; end: number };
+
 type CardInput = {
   id: string;
   text: string;
@@ -9,7 +11,33 @@ type CardInput = {
   note: string;
   image: string | null;
   auto: boolean;
+  maskedRanges: TextRange[];
 };
+
+function parseMaskedRanges(value: unknown, textLength: number): TextRange[] {
+  if (!Array.isArray(value) || value.length > 100) {
+    throw new Error("目隠し範囲の形式が正しくありません。");
+  }
+
+  let previousEnd = 0;
+  return value.map((range) => {
+    if (!range || typeof range !== "object") {
+      throw new Error("目隠し範囲の形式が正しくありません。");
+    }
+    const { start, end } = range as Record<string, unknown>;
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      (start as number) < previousEnd ||
+      (start as number) >= (end as number) ||
+      (end as number) > textLength
+    ) {
+      throw new Error("目隠し範囲の形式が正しくありません。");
+    }
+    previousEnd = end as number;
+    return { start: start as number, end: end as number };
+  });
+}
 
 function parseCard(value: unknown): CardInput {
   if (!value || typeof value !== "object") {
@@ -42,6 +70,7 @@ function parseCard(value: unknown): CardInput {
     note: card.note,
     image: card.image as string | null,
     auto: card.auto,
+    maskedRanges: parseMaskedRanges(card.maskedRanges, card.text.length),
   };
 }
 
@@ -79,6 +108,10 @@ export async function GET(request: Request) {
         note: card.note,
         image: card.image,
         auto: card.auto,
+        maskedRanges: parseMaskedRanges(
+          JSON.parse(card.maskedRanges) as unknown,
+          card.text.length,
+        ),
       })),
     });
   } catch {
@@ -115,8 +148,10 @@ export async function PUT(request: Request) {
   try {
     const prisma = getPrisma();
     for (const card of cards) {
+      const { maskedRanges, ...cardData } = card;
       const data = {
-        ...card,
+        ...cardData,
+        maskedRanges: JSON.stringify(maskedRanges),
         createdAt: new Date(card.createdAt),
         userId: session.user.id,
       };

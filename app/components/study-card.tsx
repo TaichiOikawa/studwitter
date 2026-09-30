@@ -18,6 +18,7 @@ import {
 } from "../lib/study-feed";
 import type { UserProfile } from "./account-menu";
 import { Avatar } from "./avatar";
+import { MaskedReveal } from "./masked-reveal";
 
 const actionButton =
   "flex cursor-pointer items-center gap-[5px] border-0 bg-transparent p-0.5 text-inherit";
@@ -25,6 +26,7 @@ const actionButton =
 type StudyCardProps = {
   card: StudyCardData;
   profile: UserProfile;
+  masksRevealed: boolean;
   onChange: (id: string, changes: CardChanges) => void;
   onDelete: (id: string) => void;
   onNotice: (message: string) => void;
@@ -33,6 +35,7 @@ type StudyCardProps = {
 export function StudyCard({
   card,
   profile,
+  masksRevealed,
   onChange,
   onDelete,
   onNotice,
@@ -74,7 +77,7 @@ export function StudyCard({
       return;
     }
 
-    onChange(card.id, { text });
+    onChange(card.id, { text, maskedRanges: [] });
     setEditOpen(false);
   };
 
@@ -153,7 +156,25 @@ export function StudyCard({
           </div>
         ) : (
           <div className="mt-0.75 text-ui leading-normal whitespace-pre-wrap wrap-break-word">
-            {card.text}
+            {card.maskedRanges.length === 0
+              ? card.text
+              : card.maskedRanges.flatMap((range, index) => {
+                  const key = `${range.start}:${range.end}`;
+                  const previousEnd = card.maskedRanges[index - 1]?.end ?? 0;
+                  const hiddenText = card.text.slice(range.start, range.end);
+                  return [
+                    card.text.slice(previousEnd, range.start),
+                    <MaskedReveal
+                      key={`${key}:${masksRevealed}`}
+                      text={hiddenText}
+                      index={index}
+                      initiallyRevealed={masksRevealed}
+                    />,
+                    index === card.maskedRanges.length - 1
+                      ? card.text.slice(range.end)
+                      : "",
+                  ];
+                })}
           </div>
         )}
 

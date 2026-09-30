@@ -1,5 +1,10 @@
 export type Screen = "feed" | "compose" | "auto" | "help";
 
+export type TextRange = {
+  start: number;
+  end: number;
+};
+
 export type StudyCardData = {
   id: string;
   text: string;
@@ -8,10 +13,11 @@ export type StudyCardData = {
   note: string;
   image: string | null;
   auto: boolean;
+  maskedRanges: TextRange[];
 };
 
 export type CardChanges = Partial<
-  Pick<StudyCardData, "text" | "likes" | "note" | "image">
+  Pick<StudyCardData, "text" | "likes" | "note" | "image" | "maskedRanges">
 >;
 
 export const IMAGE_LIMIT = 800 * 1024;
@@ -85,17 +91,44 @@ export async function saveCards(cards: StudyCardData[]) {
   }
 }
 
-function normalizePostText(raw: string) {
-  const text = raw.trim().replace(/[ \t]+/g, " ");
-  return text;
+export function normalizeMaskedRanges(
+  ranges: TextRange[],
+  textLength: number,
+) {
+  const normalized = ranges
+    .map(({ start, end }) => ({
+      start: Math.max(0, Math.min(start, textLength)),
+      end: Math.max(0, Math.min(end, textLength)),
+    }))
+    .filter(({ start, end }) => start < end)
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  return normalized.reduce<TextRange[]>((merged, range) => {
+    const previous = merged[merged.length - 1];
+    if (previous && range.start <= previous.end) {
+      previous.end = Math.max(previous.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+    return merged;
+  }, []);
 }
 
 export function createPostCards(
   raw: string,
   image: string | null,
+  maskedRanges: TextRange[],
 ): StudyCardData[] {
-  const text = normalizePostText(raw);
+  const leadingWhitespace = raw.length - raw.trimStart().length;
+  const text = raw.trim();
   if (!text) return [];
+  const adjustedRanges = normalizeMaskedRanges(
+    maskedRanges.map(({ start, end }) => ({
+      start: start - leadingWhitespace,
+      end: end - leadingWhitespace,
+    })),
+    text.length,
+  );
 
   const now = Date.now();
   return [
@@ -107,6 +140,7 @@ export function createPostCards(
       note: "",
       image,
       auto: false,
+      maskedRanges: adjustedRanges,
     },
   ];
 }
@@ -125,6 +159,7 @@ export function createSampleCards(subjects: string[]): StudyCardData[] {
         note: "",
         image: null,
         auto: true,
+        maskedRanges: [],
       })),
   );
 }

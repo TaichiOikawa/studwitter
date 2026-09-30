@@ -1,0 +1,1 @@
+ALTER TABLE "StudyCard" ADD COLUMN "maskedRanges" TEXT NOT NULL DEFAULT '[]';

@@ -10,6 +10,7 @@ import {
   type CardChanges,
   type Screen,
   type StudyCardData,
+  type TextRange,
 } from "../lib/study-feed";
 import type { UserProfile } from "./account-menu";
 import { AppModal, BottomNav, type ModalState } from "./app-chrome";
@@ -33,6 +34,7 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
   const [hydrated, setHydrated] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [profile, setProfile] = useState(initialProfile);
+  const [masksRevealed, setMasksRevealed] = useState(false);
   const confirmResolver = useRef<((result: boolean) => void) | null>(null);
   const cardsRef = useRef<StudyCardData[]>([]);
   const loadingRef = useRef(false);
@@ -149,8 +151,12 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
     setFeedIds((current) => current.filter((cardId) => cardId !== id));
   };
 
-  const submitPost = (text: string, image: string | null) => {
-    const newCards = createPostCards(text, image);
+  const submitPost = (
+    text: string,
+    image: string | null,
+    maskedRanges: TextRange[],
+  ) => {
+    const newCards = createPostCards(text, image, maskedRanges);
     if (!newCards.length) {
       setScreen("feed");
       return;
@@ -197,6 +203,8 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
           isEmpty={hydrated && cards.length === 0}
           onHelp={() => setScreen("help")}
           onClear={clearAll}
+          masksRevealed={masksRevealed}
+          onToggleMasks={() => setMasksRevealed((current) => !current)}
           onCardChange={updateCard}
           onCardDelete={deleteCard}
           onNotice={showNotice}

@@ -6,6 +6,7 @@ import {
   LogOutIcon,
   MoonIcon,
   SaveIcon,
+  TrashIcon,
   UserRoundIcon,
   XIcon,
 } from "lucide-react";
@@ -24,6 +25,7 @@ type AccountMenuProps = {
   isAdmin: boolean;
   profile: UserProfile;
   onProfileChange: (profile: UserProfile) => void;
+  onClear: () => void;
 };
 
 async function getErrorMessage(response: Response) {
@@ -40,6 +42,7 @@ export function AccountMenu({
   isAdmin,
   profile,
   onProfileChange,
+  onClear,
 }: AccountMenuProps) {
   const router = useRouter();
   const dialog = useRef<HTMLDivElement>(null);
@@ -241,6 +244,17 @@ export function AccountMenu({
                       className={`absolute top-0.5 size-5 rounded-full shadow-sm transition-transform ${isDark ? "translate-x-5 bg-black" : "translate-x-0.5 bg-white"}`}
                     />
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className="mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left text-sm font-semibold text-danger hover:bg-danger-soft dark:hover:bg-danger-soft-dark"
+                  onClick={() => {
+                    setOpen(false);
+                    onClear();
+                  }}
+                >
+                  <TrashIcon size={18} />
+                  全削除
                 </button>
               </div>
 

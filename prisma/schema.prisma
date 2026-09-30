@@ -17,6 +17,7 @@ model StudyCard {
   note      String   @default("")
   image     String?
   auto      Boolean  @default(false)
+  maskedRanges String @default("[]")
   updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

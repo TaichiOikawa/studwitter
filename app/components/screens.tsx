@@ -2,22 +2,25 @@
 
 import {
   CircleQuestionMarkIcon,
+  EyeIcon,
+  EyeOffIcon,
   ImagePlusIcon,
-  TrashIcon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 import {
   IMAGE_LIMIT,
   SUBJECTS,
   readImage,
   type CardChanges,
   type StudyCardData,
+  type TextRange,
 } from "../lib/study-feed";
 import { AccountMenu, type UserProfile } from "./account-menu";
 import { Avatar } from "./avatar";
 import { StudyCard } from "./study-card";
+import { MaskedTextEditor } from "./masked-text-editor";
 
 const iconButton =
   "flex cursor-pointer rounded-full border-0 bg-transparent p-1.5 text-muted active:bg-surface-muted dark:text-muted-dark dark:active:bg-surface-dark";
@@ -37,6 +40,8 @@ type FeedScreenProps = {
   isEmpty: boolean;
   onHelp: () => void;
   onClear: () => void;
+  masksRevealed: boolean;
+  onToggleMasks: () => void;
   onCardChange: (id: string, changes: CardChanges) => void;
   onCardDelete: (id: string) => void;
   onNotice: (message: string) => void;
@@ -51,6 +56,8 @@ export function FeedScreen({
   isEmpty,
   onHelp,
   onClear,
+  masksRevealed,
+  onToggleMasks,
   onCardChange,
   onCardDelete,
   onNotice,
@@ -83,17 +90,19 @@ export function FeedScreen({
           </button>
           <button
             className={iconButton}
-            title="全削除"
-            aria-label="全削除"
-            onClick={onClear}
+            title={masksRevealed ? "目隠しを非表示" : "目隠しを表示"}
+            aria-label={masksRevealed ? "すべての目隠しを非表示" : "すべての目隠しを表示"}
+            aria-pressed={masksRevealed}
+            onClick={onToggleMasks}
           >
-            <TrashIcon size={20} />
+            {masksRevealed ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
           </button>
           <AccountMenu
             email={email}
             isAdmin={isAdmin}
             profile={profile}
             onProfileChange={onProfileChange}
+            onClear={onClear}
           />
         </div>
       </header>
@@ -104,6 +113,7 @@ export function FeedScreen({
             key={instanceId}
             card={card}
             profile={profile}
+            masksRevealed={masksRevealed}
             onChange={onCardChange}
             onDelete={onCardDelete}
             onNotice={onNotice}
@@ -142,7 +152,11 @@ function SubpageHeader({
 
 type ComposeScreenProps = {
   onClose: () => void;
-  onSubmit: (text: string, image: string | null) => void;
+  onSubmit: (
+    text: string,
+    image: string | null,
+    maskedRanges: TextRange[],
+  ) => void;
   onNotice: (message: string) => void;
 };
 
@@ -153,12 +167,9 @@ export function ComposeScreen({
 }: ComposeScreenProps) {
   const [text, setText] = useState("");
   const [image, setImage] = useState<string | null>(null);
-  const textArea = useRef<HTMLTextAreaElement>(null);
+  const [maskedRanges, setMaskedRanges] = useState<TextRange[]>([]);
+  const [maskToolbar, setMaskToolbar] = useState<HTMLDivElement | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    textArea.current?.focus();
-  }, []);
 
   const chooseImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -184,7 +195,7 @@ export function ComposeScreen({
         </button>
         <button
           className="cursor-pointer rounded-popover border-0 bg-ink px-4.5 py-2 text-ui-compact font-bold text-white dark:bg-ink-dark dark:text-black"
-          onClick={() => onSubmit(text, image)}
+          onClick={() => onSubmit(text, image, maskedRanges)}
         >
           投稿
         </button>
@@ -193,12 +204,12 @@ export function ComposeScreen({
       <div className="mx-auto max-w-panel p-4.5">
         <div className="flex gap-3">
           <Avatar card={{ id: "compose-self", auto: false }} small />
-          <textarea
-            ref={textArea}
-            className="min-h-[32vh] flex-1 resize-y border-0 bg-transparent text-lg leading-[1.6] text-ink outline-none placeholder:text-muted dark:text-ink-dark dark:placeholder:text-muted-dark"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="学びたい知識を入力…"
+          <MaskedTextEditor
+            toolbar={maskToolbar}
+            onChange={(nextText, ranges) => {
+              setText(nextText);
+              setMaskedRanges(ranges);
+            }}
           />
         </div>
 
@@ -220,7 +231,10 @@ export function ComposeScreen({
           </div>
         )}
 
-        <div className="mt-3 flex gap-4 border-t border-ink-dark pt-3 dark:border-line-dark">
+        <div
+          ref={setMaskToolbar}
+          className="mt-3 flex gap-4 border-t border-ink-dark pt-3 dark:border-line-dark"
+        >
           <button
             className="cursor-pointer border-0 bg-transparent text-ink dark:text-ink-dark"
             title="画像を追加"
