@@ -19,6 +19,7 @@ import {
 import type { UserProfile } from "./account-menu";
 import { Avatar } from "./avatar";
 import { MaskedReveal } from "./masked-reveal";
+import { PostEditor } from "./post-editor";
 
 const actionButton =
   "flex cursor-pointer items-center gap-[5px] border-0 bg-transparent p-0.5 text-inherit";
@@ -42,7 +43,6 @@ export function StudyCard({
 }: StudyCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editDraft, setEditDraft] = useState(card.text);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(card.note);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -66,19 +66,7 @@ export function StudyCard({
 
   const openEdit = () => {
     setMenuOpen(false);
-    setEditDraft(card.text);
     setEditOpen(true);
-  };
-
-  const saveEdit = () => {
-    const text = editDraft.trim();
-    if (!text) {
-      onNotice("投稿内容を入力してください");
-      return;
-    }
-
-    onChange(card.id, { text, maskedRanges: [] });
-    setEditOpen(false);
   };
 
   const updateImage = async (file: File) => {
@@ -131,28 +119,16 @@ export function StudyCard({
         </div>
 
         {editOpen ? (
-          <div className="mt-2 flex flex-col gap-2">
-            <textarea
-              className="min-h-24 w-full resize-y rounded-[10px] border border-ink-dark bg-white p-2.5 text-ui leading-normal text-ink outline-none placeholder:text-muted focus:ring-2 focus:ring-ink/15 dark:border-line-dark dark:bg-black dark:text-ink-dark dark:placeholder:text-muted-dark dark:focus:ring-ink-dark/20"
-              value={editDraft}
-              onChange={(event) => setEditDraft(event.target.value)}
-              aria-label="投稿内容"
-              autoFocus
+          <div className="mt-2">
+            <PostEditor
+              initialValue={card}
+              onNotice={onNotice}
+              onSubmit={(changes) => {
+                onChange(card.id, changes);
+                setEditOpen(false);
+              }}
+              onCancel={() => setEditOpen(false)}
             />
-            <div className="flex justify-end gap-2">
-              <button
-                className="cursor-pointer rounded-2xl border border-ink-dark bg-transparent px-3.75 py-1.5 text-meta font-bold dark:border-line-dark"
-                onClick={() => setEditOpen(false)}
-              >
-                キャンセル
-              </button>
-              <button
-                className="cursor-pointer rounded-2xl border-0 bg-ink px-3.75 py-1.5 text-meta font-bold text-white dark:bg-ink-dark dark:text-black"
-                onClick={saveEdit}
-              >
-                保存
-              </button>
-            </div>
           </div>
         ) : (
           <div className="mt-0.75 text-ui leading-normal whitespace-pre-wrap wrap-break-word">
@@ -178,7 +154,7 @@ export function StudyCard({
           </div>
         )}
 
-        {card.image && (
+        {card.image && !editOpen && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="mt-2.25 block max-h-70 max-w-full rounded-control border border-ink-dark object-cover dark:border-line-dark"

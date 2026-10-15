@@ -4,23 +4,19 @@ import {
   CircleQuestionMarkIcon,
   EyeIcon,
   EyeOffIcon,
-  ImagePlusIcon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { ChangeEvent, useRef, useState } from "react";
+import { useId, useState } from "react";
 import {
-  IMAGE_LIMIT,
   SUBJECTS,
-  readImage,
   type CardChanges,
   type StudyCardData,
   type TextRange,
 } from "../lib/study-feed";
 import { AccountMenu, type UserProfile } from "./account-menu";
-import { Avatar } from "./avatar";
 import { StudyCard } from "./study-card";
-import { MaskedTextEditor } from "./masked-text-editor";
+import { PostEditor } from "./post-editor";
 
 const iconButton =
   "flex cursor-pointer rounded-full border-0 bg-transparent p-1.5 text-muted active:bg-surface-muted dark:text-muted-dark dark:active:bg-surface-dark";
@@ -165,27 +161,7 @@ export function ComposeScreen({
   onSubmit,
   onNotice,
 }: ComposeScreenProps) {
-  const [text, setText] = useState("");
-  const [image, setImage] = useState<string | null>(null);
-  const [maskedRanges, setMaskedRanges] = useState<TextRange[]>([]);
-  const [maskToolbar, setMaskToolbar] = useState<HTMLDivElement | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const chooseImage = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (file.size > IMAGE_LIMIT) {
-      onNotice("画像サイズが大きすぎます(800KB以下推奨)");
-      event.target.value = "";
-      return;
-    }
-
-    try {
-      setImage(await readImage(file));
-    } catch {
-      onNotice("画像を読み込めませんでした");
-    }
-  };
+  const formId = useId();
 
   return (
     <section>
@@ -195,64 +171,23 @@ export function ComposeScreen({
         </button>
         <button
           className="cursor-pointer rounded-popover border-0 bg-ink px-4.5 py-2 text-ui-compact font-bold text-white dark:bg-ink-dark dark:text-black"
-          onClick={() => onSubmit(text, image, maskedRanges)}
+          type="submit"
+          form={formId}
         >
           投稿
         </button>
       </div>
 
       <div className="mx-auto max-w-panel p-4.5">
-        <div className="flex gap-3">
-          <Avatar card={{ id: "compose-self", auto: false }} small />
-          <MaskedTextEditor
-            toolbar={maskToolbar}
-            onChange={(nextText, ranges) => {
-              setText(nextText);
-              setMaskedRanges(ranges);
-            }}
-          />
-        </div>
-
-        {image && (
-          <div className="relative mt-3 inline-block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="block max-h-55 max-w-full rounded-control"
-              src={image}
-              alt="添付画像のプレビュー"
-            />
-            <button
-              className="absolute top-1.5 right-1.5 flex size-6.5 cursor-pointer items-center justify-center rounded-full border-0 bg-black/65 text-white"
-              aria-label="画像を削除"
-              onClick={() => setImage(null)}
-            >
-              <XIcon size={22} />
-            </button>
-          </div>
-        )}
-
-        <div
-          ref={setMaskToolbar}
-          className="mt-3 flex gap-4 border-t border-ink-dark pt-3 dark:border-line-dark"
-        >
-          <button
-            className="cursor-pointer border-0 bg-transparent text-ink dark:text-ink-dark"
-            title="画像を追加"
-            aria-label="画像を追加"
-            onClick={() => fileInput.current?.click()}
-          >
-            <ImagePlusIcon size={20} />
-          </button>
-        </div>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={chooseImage}
+        <PostEditor
+          id={formId}
+          showAvatar
+          onNotice={onNotice}
+          onSubmit={({ text, image, maskedRanges }) =>
+            onSubmit(text, image, maskedRanges)
+          }
         />
       </div>
-
     </section>
   );
 }

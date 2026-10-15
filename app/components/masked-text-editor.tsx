@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { normalizeMaskedRanges, type TextRange } from "../lib/study-feed";
@@ -12,6 +12,8 @@ type Snapshot = Document & { caret: Caret };
 type MaskedTextEditorProps = {
   onChange: (text: string, ranges: TextRange[]) => void;
   toolbar: HTMLDivElement | null;
+  initialText?: string;
+  initialRanges?: TextRange[];
 };
 
 // Each span has an anchor so boundary carets sit inside its text node,
@@ -133,25 +135,35 @@ function updateCaretColor(root: HTMLElement) {
 export function MaskedTextEditor({
   onChange,
   toolbar,
+  initialText = "",
+  initialRanges = [],
 }: MaskedTextEditorProps) {
   const editor = useRef<HTMLDivElement>(null);
   const composing = useRef(false);
-  const current = useRef<Document>({ text: "", ranges: [] });
+  const [initialDocument] = useState<Document>(() => ({
+    text: initialText,
+    ranges: normalizeMaskedRanges(initialRanges, initialText.length),
+  }));
+  const current = useRef<Document>(initialDocument);
+  const [ranges, setRanges] = useState(initialDocument.ranges);
   const insertTextRef = useRef<(text: string) => void>(() => {});
-  const history = useRef<Snapshot[]>([{ text: "", ranges: [], caret: { start: 0, end: 0, masked: false } }]);
+  const history = useRef<Snapshot[]>([{ ...initialDocument, caret: { start: 0, end: 0, masked: false } }]);
   const historyIndex = useRef(0);
   const selectedRange = useRef<Caret | null>(null);
   const [selection, setSelection] = useState<Caret | null>(null);
-  const [empty, setEmpty] = useState(true);
+  const [empty, setEmpty] = useState(!initialText);
+  const [maskedCaret, setMaskedCaret] = useState(false);
 
   function publish(value: Document, caret: Caret, record = true) {
     current.current = value;
+    setRanges(value.ranges);
     if (record) {
       history.current = history.current.slice(0, historyIndex.current + 1);
       history.current.push({ ...value, caret });
       historyIndex.current += 1;
     }
     setEmpty(!value.text);
+    setMaskedCaret(caret.masked);
     selectedRange.current = caret.start < caret.end ? caret : null;
     setSelection(caret.start < caret.end ? caret : null);
     onChange(value.text, value.ranges);
@@ -215,6 +227,25 @@ export function MaskedTextEditor({
     if (range.start === range.end) setEmpty(false);
   }
 
+  function removeMask(range: Caret) {
+    const root = editor.current;
+    if (!root) return;
+    const value = {
+      ...current.current,
+      ranges: current.current.ranges.flatMap((mask) => {
+        if (mask.end <= range.start || mask.start >= range.end) return [mask];
+        return [
+          ...(mask.start < range.start ? [{ start: mask.start, end: range.start }] : []),
+          ...(mask.end > range.end ? [{ start: range.end, end: mask.end }] : []),
+        ];
+      }),
+    };
+    const caret = { start: range.end, end: range.end, masked: false };
+    renderDocument(root, value, caret);
+    root.focus();
+    publish(value, caret);
+  }
+
   function addSelectedMask() {
     const root = editor.current;
     const liveRange = root && selectionIn(root);
@@ -275,6 +306,7 @@ export function MaskedTextEditor({
       if (composing.current) return;
       const caret = selectionIn(root);
       updateCaretColor(root);
+      setMaskedCaret(document.activeElement === root && Boolean(caret?.masked));
       const nextSelection = caret && caret.start < caret.end ? caret : null;
       if (nextSelection) selectedRange.current = nextSelection;
       setSelection(nextSelection);
@@ -299,7 +331,7 @@ export function MaskedTextEditor({
 
   return (
     <>
-      <div className="relative flex-1">
+      <div className="relative min-w-0 flex-1">
       {empty && <div aria-hidden="true" className="pointer-events-none absolute text-lg leading-[1.6] text-muted dark:text-muted-dark">学びたい知識を入力…</div>}
       <div
         ref={editor}
@@ -311,6 +343,8 @@ export function MaskedTextEditor({
         spellCheck={false}
         className="min-h-[32vh] w-full border-0 bg-transparent text-lg leading-[1.6] whitespace-pre-wrap wrap-anywhere text-ink caret-ink outline-none dark:text-ink-dark dark:caret-ink-dark"
         onInput={commit}
+        onFocus={() => setMaskedCaret(Boolean(editor.current && selectionIn(editor.current)?.masked))}
+        onBlur={() => setMaskedCaret(false)}
         onCompositionStart={() => { composing.current = true; }}
         onCompositionEnd={() => { composing.current = false; commit(); }}
         onKeyDown={(event) => {
@@ -372,23 +406,36 @@ export function MaskedTextEditor({
         onDrop={(event) => event.preventDefault()}
       />
       {selection && (
-        <button
-          type="button"
-          className="absolute right-2 bottom-2 z-5 flex cursor-pointer items-center gap-1.5 rounded-popover border border-ink-dark bg-ink px-3.5 py-2 text-caption font-bold text-white shadow-card-menu before:absolute before:-bottom-1.5 before:right-5 before:size-3 before:rotate-45 before:border-r before:border-b before:border-ink-dark before:bg-ink dark:border-line-dark dark:bg-ink-dark dark:text-black dark:before:border-line-dark dark:before:bg-ink-dark"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => addMask(selection)}
-        >
-          <EyeOffIcon size={17} />目隠しを設定
-        </button>
+        <div className="absolute right-2 bottom-2 z-5 flex flex-wrap justify-end gap-2">
+          {ranges.some((range) => range.start < selection.end && range.end > selection.start) && (
+            <button
+              type="button"
+              className="flex cursor-pointer items-center gap-1.5 rounded-popover border border-ink-dark bg-white px-3.5 py-2 text-caption font-bold text-ink shadow-card-menu dark:border-line-dark dark:bg-black dark:text-ink-dark"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => removeMask(selection)}
+            >
+              <EyeIcon size={17} />目隠しを解除
+            </button>
+          )}
+          <button
+            type="button"
+            className="relative flex cursor-pointer items-center gap-1.5 rounded-popover border border-ink-dark bg-ink px-3.5 py-2 text-caption font-bold text-white shadow-card-menu before:absolute before:-bottom-1.5 before:right-5 before:size-3 before:rotate-45 before:border-r before:border-b before:border-ink-dark before:bg-ink dark:border-line-dark dark:bg-ink-dark dark:text-black dark:before:border-line-dark dark:before:bg-ink-dark"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => addMask(selection)}
+          >
+            <EyeOffIcon size={17} />目隠しを設定
+          </button>
+        </div>
       )}
       </div>
       {toolbar &&
         createPortal(
           <button
             type="button"
-            className="cursor-pointer border-0 bg-transparent text-ink dark:text-ink-dark"
+            className={`-m-1.5 cursor-pointer rounded-md border-0 p-1.5 ${maskedCaret ? "bg-danger/10 text-danger ring-1 ring-danger/20" : "bg-transparent text-ink dark:text-ink-dark"}`}
             title="目隠しブロックを追加"
             aria-label="目隠しブロックを追加"
+            aria-pressed={maskedCaret}
             onMouseDown={(event) => {
               event.preventDefault();
               addSelectedMask();
