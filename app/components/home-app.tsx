@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cardTags, filterByTags } from "../lib/hashtags";
 import {
   createPostCards,
   createSampleCards,
@@ -30,6 +31,7 @@ type HomeProps = {
 export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
   const [screen, setScreen] = useState<Screen>("feed");
   const [cards, setCards] = useState<StudyCardData[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [feedIds, setFeedIds] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
@@ -96,7 +98,7 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
         loadingRef.current = true;
         setFeedIds((current) => [
           ...current,
-          ...pickWeighted(cardsRef.current, 5),
+          ...pickWeighted(filterByTags(cardsRef.current, selectedTags), 5),
         ]);
         window.setTimeout(() => {
           loadingRef.current = false;
@@ -106,7 +108,34 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [screen]);
+  }, [screen, selectedTags]);
+
+  const availableTags = useMemo(
+    () => [...new Set([...cards.flatMap((card) => cardTags(card.text)), ...selectedTags])]
+      .sort((a, b) => a.localeCompare(b, "ja")),
+    [cards, selectedTags],
+  );
+  const eligibleCount = filterByTags(cards, selectedTags).length;
+
+  const changeTags = (next: string[]) => {
+    setSelectedTags(next);
+    setFeedIds(pickWeighted(filterByTags(cardsRef.current, next), 15));
+    window.scrollTo(0, 0);
+  };
+
+  // The API replaces the entire collection: filtering must never change it.
+  const replaceCards = (next: StudyCardData[]) => {
+    const previousPool = filterByTags(cardsRef.current, selectedTags);
+    const nextPool = filterByTags(next, selectedTags);
+    cardsRef.current = next;
+    setCards(next);
+    if (
+      previousPool.length !== nextPool.length ||
+      previousPool.some((card, index) => card.id !== nextPool[index].id)
+    ) {
+      setFeedIds(pickWeighted(nextPool, 15));
+    }
+  };
 
   const cardsById = useMemo(
     () => new Map(cards.map((card) => [card.id, card])),
@@ -141,14 +170,13 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
   };
 
   const updateCard = (id: string, changes: CardChanges) => {
-    setCards((current) =>
-      current.map((card) => (card.id === id ? { ...card, ...changes } : card)),
+    replaceCards(
+      cardsRef.current.map((card) => (card.id === id ? { ...card, ...changes } : card)),
     );
   };
 
   const deleteCard = (id: string) => {
-    setCards((current) => current.filter((card) => card.id !== id));
-    setFeedIds((current) => current.filter((cardId) => cardId !== id));
+    replaceCards(cardsRef.current.filter((card) => card.id !== id));
   };
 
   const submitPost = (
@@ -162,8 +190,7 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
       return;
     }
 
-    setCards((current) => [...newCards, ...current]);
-    setFeedIds((current) => [...newCards.map((card) => card.id), ...current]);
+    replaceCards([...newCards, ...cardsRef.current]);
     setScreen("feed");
   };
 
@@ -172,8 +199,7 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
       "登録した全てのカードを削除して初期状態に戻します。よろしいですか？",
     );
     if (!confirmed) return;
-    setCards([]);
-    setFeedIds([]);
+    replaceCards([]);
     showNotice("初期状態に戻しました。");
   };
 
@@ -184,9 +210,7 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
     }
 
     const newCards = createSampleCards(subjects);
-    const nextCards = [...newCards, ...cards];
-    setCards(nextCards);
-    setFeedIds(pickWeighted(nextCards, 15));
+    replaceCards([...newCards, ...cardsRef.current]);
     setScreen("feed");
     showNotice(`${newCards.length}件のサンプルカードを追加しました`);
   };
@@ -200,7 +224,13 @@ export default function Home({ email, isAdmin, initialProfile }: HomeProps) {
           profile={profile}
           onProfileChange={setProfile}
           items={feedItems}
-          isEmpty={hydrated && cards.length === 0}
+          isEmpty={hydrated && eligibleCount === 0}
+          availableTags={availableTags}
+          selectedTags={selectedTags}
+          onTagsChange={changeTags}
+          onTagSelect={(tag) => {
+            if (!selectedTags.includes(tag)) changeTags([...selectedTags, tag]);
+          }}
           onHelp={() => setScreen("help")}
           onClear={clearAll}
           masksRevealed={masksRevealed}

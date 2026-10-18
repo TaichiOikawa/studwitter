@@ -17,6 +17,7 @@ import {
   type StudyCardData,
 } from "../lib/study-feed";
 import type { UserProfile } from "./account-menu";
+import { parseHashtags } from "../lib/hashtags";
 import { Avatar } from "./avatar";
 import { MaskedReveal } from "./masked-reveal";
 import { PostEditor } from "./post-editor";
@@ -28,6 +29,7 @@ type StudyCardProps = {
   card: StudyCardData;
   profile: UserProfile;
   masksRevealed: boolean;
+  onTagSelect: (tag: string) => void;
   onChange: (id: string, changes: CardChanges) => void;
   onDelete: (id: string) => void;
   onNotice: (message: string) => void;
@@ -37,6 +39,7 @@ export function StudyCard({
   card,
   profile,
   masksRevealed,
+  onTagSelect,
   onChange,
   onDelete,
   onNotice,
@@ -132,25 +135,35 @@ export function StudyCard({
           </div>
         ) : (
           <div className="mt-0.75 text-ui leading-normal whitespace-pre-wrap wrap-break-word">
-            {card.maskedRanges.length === 0
-              ? card.text
-              : card.maskedRanges.flatMap((range, index) => {
-                  const key = `${range.start}:${range.end}`;
-                  const previousEnd = card.maskedRanges[index - 1]?.end ?? 0;
-                  const hiddenText = card.text.slice(range.start, range.end);
-                  return [
-                    card.text.slice(previousEnd, range.start),
-                    <MaskedReveal
-                      key={`${key}:${masksRevealed}`}
-                      text={hiddenText}
-                      index={index}
-                      initiallyRevealed={masksRevealed}
-                    />,
-                    index === card.maskedRanges.length - 1
-                      ? card.text.slice(range.end)
-                      : "",
-                  ];
-                })}
+            {(() => {
+              const tokens = [
+                ...parseHashtags(card.text).map((tag) => ({ ...tag, kind: "tag" as const })),
+                ...card.maskedRanges.map((range, index) => ({ ...range, kind: "mask" as const, index })),
+              ].sort((a, b) => a.start - b.start);
+              let position = 0;
+              const pieces = tokens.flatMap((token) => {
+                const plain = card.text.slice(position, token.start);
+                position = token.end;
+                const text = card.text.slice(token.start, token.end);
+                return [plain, token.kind === "tag" ? (
+                  <button
+                    key={`tag:${token.start}`}
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                    aria-label={`#${token.name} を絞り込みに追加`}
+                    onClick={() => onTagSelect(token.name)}
+                  >{text}</button>
+                ) : (
+                  <MaskedReveal
+                    key={`mask:${token.start}:${token.end}:${masksRevealed}`}
+                    text={text}
+                    index={token.index}
+                    initiallyRevealed={masksRevealed}
+                  />
+                )];
+              });
+              return [...pieces, card.text.slice(position)];
+            })()}
           </div>
         )}
 

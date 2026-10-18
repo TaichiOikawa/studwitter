@@ -34,6 +34,10 @@ type FeedScreenProps = {
   onProfileChange: (profile: UserProfile) => void;
   items: FeedItem[];
   isEmpty: boolean;
+  availableTags: string[];
+  selectedTags: string[];
+  onTagsChange: (tags: string[]) => void;
+  onTagSelect: (tag: string) => void;
   onHelp: () => void;
   onClear: () => void;
   masksRevealed: boolean;
@@ -50,6 +54,10 @@ export function FeedScreen({
   onProfileChange,
   items,
   isEmpty,
+  availableTags,
+  selectedTags,
+  onTagsChange,
+  onTagSelect,
   onHelp,
   onClear,
   masksRevealed,
@@ -103,6 +111,32 @@ export function FeedScreen({
         </div>
       </header>
 
+      {availableTags.length > 0 && (
+        <div className="mx-auto max-w-panel border-b border-ink-dark px-4.5 py-3 dark:border-line-dark" role="group" aria-label="ハッシュタグで絞り込み">
+          <p className="mb-2 text-caption text-muted dark:text-muted-dark">タグで復習（選んだタグすべてに一致）</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="cursor-pointer rounded-2xl border border-ink-dark px-3 py-1 text-caption dark:border-line-dark"
+              aria-pressed={selectedTags.length === 0}
+              onClick={() => onTagsChange([])}
+            >すべて{selectedTags.length > 0 ? "（解除）" : ""}</button>
+            {availableTags.map((tag) => {
+              const selected = selectedTags.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-pressed={selected}
+                  className={`max-w-full cursor-pointer rounded-2xl border px-3 py-1 text-caption wrap-anywhere ${selected ? "border-ink bg-ink text-white dark:border-ink-dark dark:bg-ink-dark dark:text-black" : "border-ink-dark dark:border-line-dark"}`}
+                  onClick={() => onTagsChange(selected ? selectedTags.filter((name) => name !== tag) : [...selectedTags, tag])}
+                >#{tag}</button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-panel pb-19" aria-label="feed">
         {items.map(({ instanceId, card }) => (
           <StudyCard
@@ -110,6 +144,7 @@ export function FeedScreen({
             card={card}
             profile={profile}
             masksRevealed={masksRevealed}
+            onTagSelect={onTagSelect}
             onChange={onCardChange}
             onDelete={onCardDelete}
             onNotice={onNotice}
@@ -119,9 +154,15 @@ export function FeedScreen({
 
       {isEmpty && (
         <div className="px-6 py-17.5 text-center text-sm leading-[1.7] text-muted dark:text-muted-dark">
-          まだカードがありません。
-          <br />
-          下の追加ボタンから知識を投稿しましょう。
+          {selectedTags.length > 0 ? (
+            <>
+              選択したタグすべてに一致するカードがありません。
+              <br />
+              <button type="button" className="mt-2 cursor-pointer underline" onClick={() => onTagsChange([])}>絞り込みを解除</button>
+            </>
+          ) : (
+            <>まだカードがありません。<br />下の追加ボタンから知識を投稿しましょう。</>
+          )}
         </div>
       )}
     </section>
