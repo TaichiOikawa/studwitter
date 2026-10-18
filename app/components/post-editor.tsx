@@ -8,6 +8,7 @@ import {
   readImage,
   type StudyCardData,
 } from "../lib/study-feed";
+import { protectHashtags } from "../lib/hashtags";
 import { Avatar } from "./avatar";
 import { MaskedTextEditor } from "./masked-text-editor";
 
@@ -66,13 +67,13 @@ export function PostEditor({
         onSubmit({
           ...draft,
           text,
-          maskedRanges: normalizeMaskedRanges(
+          maskedRanges: protectHashtags(text, normalizeMaskedRanges(
             draft.maskedRanges.map(({ start, end }) => ({
               start: start - offset,
               end: end - offset,
             })),
             text.length,
-          ),
+          )),
         });
       }}
     >
@@ -87,6 +88,7 @@ export function PostEditor({
           }
         />
       </div>
+      <p className="mt-2 text-caption text-muted dark:text-muted-dark">タグ（例：#英語）は目隠しできません。</p>
       {draft.image && (
         <div className="relative mt-3 inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}

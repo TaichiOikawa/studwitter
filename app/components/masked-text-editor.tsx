@@ -3,6 +3,7 @@
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { parseHashtags, protectHashtags } from "../lib/hashtags";
 import { normalizeMaskedRanges, type TextRange } from "../lib/study-feed";
 
 type Document = { text: string; ranges: TextRange[] };
@@ -67,6 +68,10 @@ function selectionIn(root: HTMLElement): Caret | null {
 }
 
 function renderDocument(root: HTMLElement, value: Document, caret: Caret) {
+  value.ranges = protectHashtags(value.text, value.ranges);
+  if (parseHashtags(value.text).some((tag) => tag.start <= caret.start && caret.start < tag.end)) {
+    caret.masked = false;
+  }
   const fragment = document.createDocumentFragment();
   const pieces: { node: Text; start: number; end: number; masked: boolean; prefix: number }[] = [];
   function append(start: number, end: number, masked: boolean) {
@@ -142,7 +147,7 @@ export function MaskedTextEditor({
   const composing = useRef(false);
   const [initialDocument] = useState<Document>(() => ({
     text: initialText,
-    ranges: normalizeMaskedRanges(initialRanges, initialText.length),
+    ranges: protectHashtags(initialText, normalizeMaskedRanges(initialRanges, initialText.length)),
   }));
   const current = useRef<Document>(initialDocument);
   const [ranges, setRanges] = useState(initialDocument.ranges);

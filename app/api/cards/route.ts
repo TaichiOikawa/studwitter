@@ -1,3 +1,4 @@
+import { protectHashtags } from "@/app/lib/hashtags";
 import { auth } from "@/app/lib/auth";
 import { getPrisma } from "@/app/lib/prisma";
 
@@ -70,7 +71,7 @@ function parseCard(value: unknown): CardInput {
     note: card.note,
     image: card.image as string | null,
     auto: card.auto,
-    maskedRanges: parseMaskedRanges(card.maskedRanges, card.text.length),
+    maskedRanges: protectHashtags(card.text, parseMaskedRanges(card.maskedRanges, card.text.length)),
   };
 }
 
@@ -108,10 +109,10 @@ export async function GET(request: Request) {
         note: card.note,
         image: card.image,
         auto: card.auto,
-        maskedRanges: parseMaskedRanges(
+        maskedRanges: protectHashtags(card.text, parseMaskedRanges(
           JSON.parse(card.maskedRanges) as unknown,
           card.text.length,
-        ),
+        )),
       })),
     });
   } catch {

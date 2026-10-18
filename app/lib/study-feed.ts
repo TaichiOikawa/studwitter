@@ -1,3 +1,5 @@
+import { protectHashtags } from "./hashtags";
+
 export type Screen = "feed" | "compose" | "auto" | "help";
 
 export type TextRange = {
@@ -74,7 +76,10 @@ export async function loadCards(): Promise<StudyCardData[]> {
     throw new Error("カード一覧の形式が正しくありません。");
   }
 
-  return body.cards as StudyCardData[];
+  return (body.cards as StudyCardData[]).map((card) => ({
+    ...card,
+    maskedRanges: protectHashtags(card.text, card.maskedRanges),
+  }));
 }
 
 export async function saveCards(cards: StudyCardData[]) {
@@ -140,7 +145,7 @@ export function createPostCards(
       note: "",
       image,
       auto: false,
-      maskedRanges: adjustedRanges,
+      maskedRanges: protectHashtags(text, adjustedRanges),
     },
   ];
 }
