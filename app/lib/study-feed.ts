@@ -158,7 +158,7 @@ export function createSampleCards(subjects: string[]): StudyCardData[] {
       .slice(0, 2)
       .map((text, index) => ({
         id: `${now}${Math.random().toString(36).slice(2, 7)}${subject}${index}`,
-        text,
+        text: `${text}\n\n#${subject}`,
         likes: 0,
         createdAt: now,
         note: "",
