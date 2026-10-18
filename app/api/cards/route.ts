@@ -1,4 +1,4 @@
-import { protectHashtags } from "@/app/lib/hashtags";
+import { parseHashtags, protectHashtags } from "@/app/lib/hashtags";
 import { auth } from "@/app/lib/auth";
 import { getPrisma } from "@/app/lib/prisma";
 
@@ -15,8 +15,11 @@ type CardInput = {
   maskedRanges: TextRange[];
 };
 
-function parseMaskedRanges(value: unknown, textLength: number): TextRange[] {
-  if (!Array.isArray(value) || value.length > 100) {
+function parseMaskedRanges(value: unknown, text: string): TextRange[] {
+  // Each hashtag can split one existing mask into two. Accept the protected
+  // result on subsequent reads/writes while retaining the original mask limit.
+  const rangeLimit = 100 + parseHashtags(text).length;
+  if (!Array.isArray(value) || value.length > rangeLimit) {
     throw new Error("目隠し範囲の形式が正しくありません。");
   }
 
@@ -31,7 +34,7 @@ function parseMaskedRanges(value: unknown, textLength: number): TextRange[] {
       !Number.isSafeInteger(end) ||
       (start as number) < previousEnd ||
       (start as number) >= (end as number) ||
-      (end as number) > textLength
+      (end as number) > text.length
     ) {
       throw new Error("目隠し範囲の形式が正しくありません。");
     }
@@ -71,7 +74,7 @@ function parseCard(value: unknown): CardInput {
     note: card.note,
     image: card.image as string | null,
     auto: card.auto,
-    maskedRanges: protectHashtags(card.text, parseMaskedRanges(card.maskedRanges, card.text.length)),
+    maskedRanges: protectHashtags(card.text, parseMaskedRanges(card.maskedRanges, card.text)),
   };
 }
 
@@ -111,7 +114,7 @@ export async function GET(request: Request) {
         auto: card.auto,
         maskedRanges: protectHashtags(card.text, parseMaskedRanges(
           JSON.parse(card.maskedRanges) as unknown,
-          card.text.length,
+          card.text,
         )),
       })),
     });

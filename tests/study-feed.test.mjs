@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
-import { cardTags, filterByTags, parseHashtags } from '../app/lib/hashtags.ts';
+import { filterByTags, parseHashtags } from '../app/lib/hashtags.ts';
 
 // Resolve the app's extensionless TypeScript imports in Node's native test runner.
 registerHooks({
